@@ -1,0 +1,98 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Repercise Book</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="{% static '/css/icofont.min.css' %}" />
+    <link rel="stylesheet" href="{% static '/css/base.css' %}" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg bg-light">
+      <div class="container-fluid container">
+        <a class="navbar-brand" href="/">Repercise Book</a>
+
+        <!-- 末ログイン -->
+        {% if user.is_anonymous %}
+        <ul class="navbar-nav text-start ms-auto mb-lg-0">
+          <li>
+            <a
+              class="nav-link"
+              aria-current="page"
+              href="{% url 'accounts:account_login'%}"
+              style="color: #000000"
+              >ログイン
+            </a>
+          </li>
+          <li>
+            <a
+              class="nav-link"
+              aria-current="page"
+              href="{% url 'accounts:account_signup'%}"
+              style="color: #2196f3"
+              >新規登録
+            </a>
+          </li>
+        </ul>
+        {% endif %}
+
+        <!-- 済ログイン -->
+        {% if not user.is_anonymous%}
+        <div class="dropdown">
+          <div
+            class="d-flex p-0"
+            type="button"
+            id="dropdownMenuButton1"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            style="width: 50px; height: 50px"
+          >
+            {% if user.icon %}
+            <img src="{{ user.icon.url }}" class="user-icon" />
+            {% else %}
+            <img src="{% static 'images/user_icon.png' %}" class="avatar" />
+            {% endif %}
+          </div>
+          <ul class="dropdown-menu mt-2" style="left: -150px">
+            <li>
+              <a class="dropdown-item" href="{% url 'accounts:profile' %}"
+                >{{user.user_name}}</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'account_logout' %}"
+                >ログアウト</a
+              >
+            </li>
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </nav>
+
+    <!-- content -->
+    <div id="baseHeight" class="p-4 container">
+      {% block content %}{% endblock content %}
+    </div>
+  </body>
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+    crossorigin="anonymous"
+  ></script>
+  <!-- Vue.js CDN -->
+  <script src="https://unpkg.com/vue@next"></script>
+  <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/vue/3.0.2/vue.min.js"></script> -->
+  <!-- axios -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <!-- base -->
+  <script src="{% static '/js/base.js' %}"></script>
+  {% block script %} {% endblock script %}
+</html>

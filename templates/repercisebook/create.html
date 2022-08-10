@@ -1,0 +1,150 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+<div id="app">
+  <form
+    @submit.prevent="createBook"
+    enctype="multipart/form-data"
+    method="post"
+  >
+    <div class="row">
+      <div class="col-sm-7 col-md-6 mx-auto">
+        <input
+          v-model="title"
+          type="text"
+          name="title"
+          maxlength="100"
+          placeholder="タイトル"
+          class="form-control mt-5 mb-2 rounded text-dark-light"
+          required=""
+          id="id_title"
+        />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-7 col-md-6 mx-auto">
+        <textarea
+          v-model="description"
+          name="description"
+          cols="40"
+          rows="10"
+          maxlength="1000"
+          placeholder="概要"
+          class="form-control mt-2 mb-2 rounded text-dark-light"
+          id="id_description"
+        ></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-7 col-md-6 mx-auto">
+        <input
+          @change="selectFile"
+          ref="file"
+          type="file"
+          name="cover"
+          accept="image/*"
+          placeholder="カバー画像"
+          class="form-control mt-2 mb-2 rounded text-dark-light"
+          id="id_cover"
+        />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-7 col-md-6 mx-auto">
+        <input
+          v-model="tag"
+          type="text"
+          name="tag"
+          maxlength="50"
+          placeholder="タグ"
+          class="form-control mt-2 mb-2 rounded text-dark-light"
+          id="id_tag"
+        />
+      </div>
+    </div>
+    <div class="text-center py-3">
+      <button
+        type="submit"
+        class="btn btn-lg bg-white text-pink shadow border-orange"
+      >
+        create
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %} {% block script %}
+
+<script>
+  const app = {
+    data() {
+      return {
+        title: "",
+        description: "",
+        cover: null,
+        tag: "",
+      };
+    },
+    methods: {
+      selectFile() {
+        this.cover = this.$refs.file.files[0];
+      },
+      performUpload(file) {
+        let formData = new FormData();
+        formData.append("document", file);
+
+        return axios.post('{% url "repercisebook:create_book" %}', formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "X-CSRFToken": "{{ csrf_token }}",
+          },
+        });
+      },
+      onImageUploaded(e) {
+        const image = e.target.files[0];
+        this.createImage(image);
+      },
+      createImage(image) {
+        const reader = new FileReader();
+        // imageをreaderにDataURLとしてattachする
+        reader.readAsDataURL(image);
+        // readAsdDataURLが完了したあと実行される処理
+        reader.onload = () => {
+          this.cover = reader.result;
+        };
+      },
+      createBook() {
+        let data = new FormData();
+        if (this.title) {
+          data.append("title", this.title);
+          data.append("description", this.description);
+          data.append("cover", this.cover);
+          data.append("tag", this.tag);
+
+          sendRequest('{% url "repercisebook:create_book" %}', "post", data)
+            .then((response) => {
+              console.log(response);
+              window.location.href = "/"; //ページ遷移
+            })
+            .catch((errors) => console.log(errors)); // 6
+        } else console.log(this.title);
+      },
+    },
+    delimiters: ["[[", "]]"],
+  };
+  Vue.createApp(app).mount("#app");
+
+  function sendRequest(url, method, data) {
+    const r = axios({
+      method: method,
+      url: url,
+      data: data,
+      xsrfCookieName: "csrftoken",
+      xsrfHeaderName: "x-CSRFToken",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    });
+    return r;
+  }
+</script>
+
+{% endblock script %}

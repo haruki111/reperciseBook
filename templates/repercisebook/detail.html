@@ -1,0 +1,381 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+
+<div id="app">
+  <div class="d-flex justify-content-center">
+    <div>
+      <div
+        v-if="book.cover=='' || book.cover == 'null'"
+        id="book_detail_appearance"
+        class="card d-flex justify-content-center"
+      ></div>
+      <img
+        v-else
+        id="book_detail_appearance"
+        :src="'/media/' + book.cover"
+        alt=""
+        class="rounded"
+      />
+    </div>
+
+    <form
+      @submit.prevent="updateBook()"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <div class="ms-5">
+        <div>
+          <input
+            v-if="!isTitleClick || book.title==''"
+            v-model="book.title"
+            @keypress.enter="isTitleClick=true"
+            @Keypress="isTitleClick=false"
+            @blur="isTitleClick=true"
+            type="text"
+            name="title"
+            maxlength="100"
+            placeholder="タイトル"
+            class="form-control mb-2 rounded text-dark-light"
+            required=""
+            id="title"
+          />
+          <h3 v-else @click="titleClick()">[[ book.title ]]</h3>
+        </div>
+        <div>
+          <textarea
+            v-if='!isDescriptionClick || book.description == ""'
+            v-model="book.description"
+            @blur="isDescriptionClick=true"
+            @Keypress="isDescriptionClick=false"
+            name="description"
+            cols="40"
+            :rows='book.description.length - book.description.replace(/\n/g, "").length+1'
+            maxlength="1000"
+            placeholder="概要"
+            class="form-control mt-2 mb-2 rounded text-dark-light"
+            id="description"
+          ></textarea>
+          <p v-else @click="descriptionClick()" style="white-space: pre-line">
+            [[book.description]]
+          </p>
+        </div>
+        <div>
+          <div v-if="isTagClick" class="d-flex">
+            <span
+              v-for="(tag, index) in book.tags"
+              class="badge text-bg-secondary me-2"
+              >[[tag]]</span
+            >
+            <span @click="tagClick()" class="badge text-bg-secondary"
+              >編集する</span
+            >
+          </div>
+          <div v-else>
+            <input
+              v-model="book.tags"
+              @keypress.enter="tagSave()"
+              @blur="tagSave()"
+              type="text"
+              name="tag"
+              maxlength="50"
+              placeholder="タグ"
+              class="form-control mt-2 mb-2 rounded text-dark-light"
+              id="id_tag"
+            />
+          </div>
+        </div>
+        <div class="">
+          <input
+            @change="selectFile"
+            ref="file"
+            type="file"
+            name="cover"
+            accept="image/*"
+            placeholder="カバー画像"
+            class="form-control mt-2 mb-2 rounded text-dark-light"
+            id="id_cover"
+          />
+        </div>
+        <div class="d-flex mt-4 justify-content-center">
+          <button v-if="editBook" class="btn btn-primary" disabled>
+            保存済み
+          </button>
+          <button v-else type="submit" class="btn btn-primary">
+            下書きを保存
+          </button>
+          <div @click="deleteBook()" class="d-flex align-items-center ps-4">
+            <i class="icofont-trash icofont-2x text-danger"></i>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div
+    class="mt-5 d-flex justify-content-center align-items-center flex-column"
+  >
+    <div
+      v-for="(section, index) in book.sections"
+      class="card w-50 mb-2 d-flex flex-row align-items-center"
+      draggable="true"
+      @dragstart="startDrag($event, index)"
+      @drop="onDrop($event, index)"
+      @dragenter.prevent
+      @dragover.prevent
+    >
+      <div
+        @click="detailSection(section.pk)"
+        class="card-body"
+        style="cursor: pointer"
+      >
+        [[section.title]]
+      </div>
+      <div class="dropdown pe-2">
+        <i class="icofont-curved-down" data-bs-toggle="dropdown"></i>
+        <ul class="dropdown-menu dropdown-menu-lg-end">
+          <li>
+            <p @click="deleteSection(section.pk)" class="dropdown-item mb-0">
+              削除する
+            </p>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <form
+      @submit.prevent="createSection()"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <button type="submit" class="btn btn-primary">セクションを作成</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %} {% block script %}
+
+<script>
+  const app = {
+    data() {
+      return {
+        book: [],
+        copyBook: [],
+        isEdit: false,
+        isTitleClick: true,
+        isDescriptionClick: true,
+        isTagClick: true,
+        file: null,
+      };
+    },
+    mounted() {
+      axios
+        .get('{% url "repercisebook:get_detail_book" pk %}')
+        .then((response) => {
+          const data = response.data[0];
+          let sections = [];
+          for (let i = 0; i < data.sectionTitle.length; i++) {
+            sections[i] = {
+              pk: data.sectionPk[i],
+              title: data.sectionTitle[i],
+              orderNum: data.sectionOrder[i],
+            };
+          }
+          this.book = {
+            title: data.title,
+            description: data.description,
+            user: data.user,
+            cover: data.cover,
+            tags: data.tags,
+            finish_count: data.finish_count,
+            postData: data.postData,
+            pk: data.pk,
+            sections: sections,
+          };
+          this.copyBook = {
+            title: data.title,
+            description: data.description,
+            user: data.user,
+            cover: data.cover,
+            tags: data.tags,
+            finish_count: data.finish_count,
+            postData: data.postData,
+            pk: data.pk,
+            sections: sections.map((list) => ({ ...list })),
+          };
+        })
+        .catch((error) => console.log(error));
+    },
+    methods: {
+      titleClick() {
+        this.isTitleClick = false;
+
+        this.isDescriptionClick = true;
+        this.isTagClick = true;
+      },
+      descriptionClick() {
+        this.isDescriptionClick = false;
+
+        this.isTitleClick = true;
+        this.isTagClick = true;
+      },
+      tagClick() {
+        this.isTagClick = false;
+
+        this.isTitleClick = true;
+        this.isDescriptionClick = true;
+      },
+      tagSave() {
+        this.isTagClick = true;
+
+        this.book.tags = this.book.tags.split(","); //配列にする
+        this.isTitleClick = true;
+        this.isDescriptionClick = true;
+      },
+
+      btnClick() {
+        this.$refs.input.click();
+      },
+
+      selectFile() {
+        this.file = this.$refs.file.files[0];
+      },
+
+      updateBook() {
+        let data = new FormData();
+        data.append("title", this.book.title);
+        data.append("description", this.book.description);
+        if (this.file !== null) {
+          data.append("cover", this.file);
+        }
+
+        data.append("tags", this.book.tags);
+        data.append("sections", JSON.stringify(this.book.sections));
+
+        sendRequest('{% url "repercisebook:detail_book" pk %}', "post", data)
+          .then((response) => {
+            console.log(response);
+            this.copyBook.title = this.book.title;
+            this.copyBook.description = this.book.description;
+            this.copyBook.tags = this.book.tags;
+            if (this.file !== null) {
+              axios
+                .get('{% url "repercisebook:get_detail_book" pk %}')
+                .then((response) => {
+                  const data = response.data[0];
+                  this.book.cover = data.cover;
+                  this.copyBook.cover = data.cover;
+                })
+                .catch((error) => console.log(error));
+            }
+            this.file = null;
+            this.getSections();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      deleteBook() {
+        sendRequest('{% url "repercisebook:delete_book" pk %}', "post")
+          .then((response) => {
+            console.log(response);
+            window.location.href = "/"; //ページ遷移
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      createSection() {
+        let data = new FormData();
+
+        data.append("title", "無題のセクション");
+
+        sendRequest('{% url "repercisebook:create_section" pk %}', "post", data)
+          .then((response) => {
+            console.log(response);
+            this.getSections();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      detailSection(pk) {
+        window.location.href = "/detail/section/" + pk + "/";
+      },
+
+      startDrag(event, sectionIndex) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer.setData("sectionIndex", sectionIndex);
+      },
+
+      onDrop(event, sectionIndex) {
+        const dragIndex = event.dataTransfer.getData("sectionIndex");
+        const deleteList = this.book.sections.splice(dragIndex, 1);
+        this.book.sections.splice(sectionIndex, 0, deleteList[0]);
+      },
+
+      deleteSection(sectionPk) {
+        console.log(sectionPk);
+        sendRequest("/delete/section/" + sectionPk + "/", "post")
+          .then((response) => {
+            console.log(response);
+            this.getSections();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      getSections() {
+        axios
+          .get('{% url "repercisebook:get_detail_book" pk %}')
+          .then((response) => {
+            const data = response.data[0];
+            let sections = [];
+            for (let i = 0; i < data.sectionTitle.length; i++) {
+              sections[i] = {
+                pk: data.sectionPk[i],
+                title: data.sectionTitle[i],
+                orderNum: data.sectionOrder[i],
+              };
+            }
+            this.book.sections = sections;
+            this.copyBook.sections = sections.map((list) => ({ ...list }));
+          })
+          .catch((error) => console.log(error));
+      },
+    },
+    computed: {
+      editBook() {
+        sections = JSON.stringify(this.book.sections);
+        copySections = JSON.stringify(this.copyBook.sections);
+
+        const isEdit =
+          this.book.title === this.copyBook.title &&
+          this.book.description === this.copyBook.description &&
+          this.book.tags === this.copyBook.tags &&
+          this.file === null &&
+          sections == copySections;
+
+        if (isEdit) {
+          return 1;
+        } else {
+          return 0;
+        }
+      },
+    },
+
+    delimiters: ["[[", "]]"],
+  };
+  Vue.createApp(app).mount("#app");
+
+  function sendRequest(url, method, data) {
+    const r = axios({
+      method: method,
+      url: url,
+      data: data,
+      xsrfCookieName: "csrftoken",
+      xsrfHeaderName: "x-CSRFToken",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    });
+    return r;
+  }
+</script>
+
+{% endblock script %}

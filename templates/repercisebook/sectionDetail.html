@@ -1,0 +1,406 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+
+<div id="app">
+  <div>
+    <form
+      @submit.prevent="updateSection()"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <div class="d-flex justify-content-around align-items-center">
+        <div
+          @click="detailBook(book)"
+          class="d-flex align-items-center"
+          style="cursor: pointer"
+        >
+          <i class="icofont-arrow-left icofont-2x me-2"></i>
+          <div
+            v-if="bookCover=='' || bookCover == 'null'"
+            id="book_small_appearance"
+            class="card d-flex justify-content-center"
+          ></div>
+          <img
+            v-else
+            id="book_small_appearance"
+            :src="'/media/' + bookCover"
+            alt=""
+            class="rounded"
+          />
+        </div>
+        <div>
+          <input
+            v-if="!isTitleClick || section.title==''"
+            v-model="section.title"
+            @keypress.enter="isTitleClick=true"
+            @Keypress="isTitleClick=false"
+            @blur="isTitleClick=true"
+            type="text"
+            name="title"
+            maxlength="100"
+            placeholder="タイトル"
+            class="form-control rounded text-dark-light"
+            required=""
+            id="title"
+          />
+          <h3 v-else @click="titleClick()" class="mb-0">[[ section.title ]]</h3>
+        </div>
+
+        <div class="d-flex justify-content-center">
+          <button v-if="editSection" class="btn btn-primary" disabled>
+            保存済み
+          </button>
+          <button v-else type="submit" class="btn btn-primary">
+            下書き保存
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <div
+          v-for="(problem, index) in section.problems"
+          :key="index"
+          class="card w-75 mb-2 m-auto"
+          draggable="true"
+          @dragstart="startDrag($event, index)"
+          @drop="onDrop($event, index)"
+          @dragenter.prevent
+          @dragover.prevent
+        >
+          <div class="d-flex flex-row align-items-center">
+            <h3
+              @click="handleToggle(index)"
+              class="card-body mb-0"
+              :class="{'is-active': problem.isOpen}"
+              style="cursor: pointer"
+            >
+              Problem[[index + 1]]
+            </h3>
+            <div class="dropdown pe-2">
+              <i class="icofont-curved-down" data-bs-toggle="dropdown"></i>
+              <ul class="dropdown-menu dropdown-menu-lg-end">
+                <li>
+                  <p
+                    @click="deleteProblem(problem.pk)"
+                    class="dropdown-item mb-0"
+                  >
+                    削除する
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div v-show="section.formClicks[index].isOpen" class="ms-4">
+            <div class="mb-2 d-flex align-items-center">
+              <i class="icofont-question me-1"></i>
+              <textarea
+                v-if='!getQuestionClick(index) || problem.question == ""'
+                v-model="problem.question"
+                @blur="section.formClicks[index].isQuestionClick=true"
+                @Keypress="section.formClicks[index].isQuestionClick=false"
+                name="description"
+                cols="40"
+                :rows='problem.question.length - problem.question.replace(/\n/g, "").length+1'
+                maxlength="1000"
+                placeholder="問題"
+                class="form-control px-3 py-1 rounded text-dark-light"
+                required=""
+                id="description"
+              ></textarea>
+              <p
+                v-else
+                @click="questionClick(index)"
+                class="mb-0 px-3 py-1"
+                style="white-space: pre-line"
+              >
+                [[problem.question]]
+              </p>
+            </div>
+            <div class="mb-2 d-flex align-items-center">
+              <i class="icofont-pencil-alt-2 me-1"></i>
+              <input
+                v-if="!getAnswerClick(index) || problem.answer==''"
+                v-model="problem.answer"
+                @keypress.enter="section.formClicks[index].isAnswerClick=true"
+                @Keypress="section.formClicks[index].isAnswerClick=false"
+                @blur="problem.isAnswerClick=true"
+                type="text"
+                name="title"
+                maxlength="100"
+                placeholder="タイトル"
+                class="form-control px-3 py-1 rounded text-dark-light"
+                required=""
+                id="title"
+              />
+              <p v-else @click="answerClick(index)" class="mb-0 px-3 py-1">
+                [[ problem.answer ]]
+              </p>
+            </div>
+            <div class="mb-2 d-flex align-items-center">
+              <i class="icofont-book me-1"></i>
+              <textarea
+                v-if='!getExplanationClick(index)|| problem.explanation == ""'
+                v-model="problem.explanation"
+                @blur="section.formClicks[index].isExplanationClick=true"
+                @Keypress="section.formClicks[index].isExplanationClick=false"
+                name="description"
+                cols="40"
+                :rows='problem.explanation.length - problem.explanation.replace(/\n/g, "").length+1'
+                maxlength="1000"
+                placeholder="解説"
+                class="form-control px-3 py-1 rounded text-dark-light"
+                id="description"
+              ></textarea>
+              <p
+                v-else
+                @click="explanationClick(index)"
+                class="mb-0 px-3 py-1"
+                style="white-space: pre-line"
+              >
+                [[problem.explanation]]
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="mt-3">
+    <form
+      @submit.prevent="createProblem()"
+      enctype="multipart/form-data"
+      method="post"
+      class="d-flex justify-content-center align-items-centers"
+    >
+      <button type="submit" class="btn btn-primary">問題を作成</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %} {% block script %}
+
+<script>
+  const app = {
+    data() {
+      return {
+        section: [],
+        copySection: [],
+        book: "",
+        bookCover: "",
+        isEdit: false,
+        isTitleClick: true,
+      };
+    },
+    mounted() {
+      axios
+        .get('{% url "repercisebook:get_detail_section" pk %}')
+        .then((response) => {
+          const data = response.data[0];
+          this.book = data.book;
+          this.bookCover = data.bookCover;
+
+          let problemArr = [];
+          let formClicks = [];
+          for (let i = 0; i < data.problemPk.length; i++) {
+            problemArr[i] = {
+              pk: data.problemPk[i],
+              question: data.problemQuestion[i],
+              answer: data.problemAnswer[i],
+              explanation: data.problemExplanation[i],
+              orderNum: data.problemOrder[i],
+            };
+            formClicks[i] = {
+              isQuestionClick: true,
+              isAnswerClick: true,
+              isExplanationClick: true,
+              isOpen: false,
+            };
+          }
+
+          this.section = {
+            title: data.title,
+            orderNum: data.orderNum,
+            problems: problemArr,
+            formClicks: formClicks,
+          };
+
+          this.copySection = {
+            title: data.title,
+            orderNum: data.orderNum,
+            problems: problemArr.map((list) => ({ ...list })),
+          };
+        })
+        .catch((error) => console.log(error));
+    },
+    methods: {
+      detailBook(pk) {
+        window.location.href = "/detail/" + pk + "/";
+      },
+      handleToggle(index) {
+        const problem = this.section.formClicks[index];
+        problem.isOpen = !problem.isOpen;
+      },
+      getQuestionClick(index) {
+        return this.section.formClicks[index].isQuestionClick;
+      },
+      getAnswerClick(index) {
+        return this.section.formClicks[index].isAnswerClick;
+      },
+      getExplanationClick(index) {
+        return this.section.formClicks[index].isExplanationClick;
+      },
+      questionClick(index) {
+        const problem = this.section.formClicks[index];
+
+        problem.isQuestionClick = false;
+        problem.isAnswerClick = true;
+        problem.isExplanationClick = true;
+      },
+      answerClick(index) {
+        const problem = this.section.formClicks[index];
+
+        problem.isAnswerClick = false;
+        problem.isQuestionClick = true;
+        problem.isExplanationClick = true;
+      },
+      explanationClick(index) {
+        const problem = this.section.formClicks[index];
+
+        problem.isExplanationClick = false;
+        problem.isQuestionClick = true;
+        problem.isAnswerClick = true;
+      },
+      titleClick() {
+        this.isTitleClick = false;
+
+        this.isDescriptionClick = true;
+        this.isTagClick = true;
+      },
+
+      updateSection() {
+        let data = new FormData();
+
+        data.append("title", this.section.title);
+        data.append("problems", JSON.stringify(this.section.problems));
+
+        sendRequest('{% url "repercisebook:detail_section" pk %}', "post", data)
+          .then((response) => {
+            console.log(response);
+            this.getSection();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      async createProblem() {
+        let data = new FormData();
+
+        data.append("question", "無題の問題");
+        data.append("answer", "ans");
+        data.append("explanation", "");
+
+        sendRequest('{% url "repercisebook:create_problem" pk %}', "post", data)
+          .then((response) => {
+            console.log(response);
+            this.getSection();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      deleteProblem(problemPk) {
+        console.log(problemPk);
+        sendRequest("/delete/problem/" + problemPk + "/", "post")
+          .then((response) => {
+            console.log(response);
+            this.getSection();
+          })
+          .catch((errors) => console.log(errors));
+      },
+
+      startDrag(event, problemIndex) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer.setData("problemIndex", problemIndex);
+      },
+
+      onDrop(event, problemIndex) {
+        const dragIndex = event.dataTransfer.getData("problemIndex");
+        const deleteList = this.section.problems.splice(dragIndex, 1);
+        this.section.problems.splice(problemIndex, 0, deleteList[0]);
+      },
+
+      getSection() {
+        axios
+          .get('{% url "repercisebook:get_detail_section" pk %}')
+          .then((response) => {
+            const data = response.data[0];
+            let problems = [];
+            let formClicks = [];
+            for (let i = 0; i < data.problemPk.length; i++) {
+              problems[i] = {
+                pk: data.problemPk[i],
+                question: data.problemQuestion[i],
+                answer: data.problemAnswer[i],
+                explanation: data.problemExplanation[i],
+                orderNum: data.problemOrder[i],
+              };
+              formClicks[i] = {
+                isQuestionClick: true,
+                isAnswerClick: true,
+                isExplanationClick: true,
+                isOpen: false,
+              };
+            }
+
+            this.section = {
+              title: data.title,
+              orderNum: data.orderNum,
+              problems: problems,
+              formClicks: formClicks,
+            };
+            this.copySection = {
+              title: data.title,
+              orderNum: data.orderNum,
+              problems: problems.map((list) => ({ ...list })),
+            };
+          })
+          .catch((error) => console.log(error));
+      },
+    },
+    computed: {
+      editSection() {
+        problems = JSON.stringify(this.section.problems);
+        copyProblems = JSON.stringify(this.copySection.problems);
+
+        const isEdit =
+          this.section.title === this.copySection.title &&
+          problems === copyProblems;
+
+        if (isEdit) {
+          return 1;
+        } else {
+          return 0;
+        }
+      },
+    },
+
+    delimiters: ["[[", "]]"],
+  };
+  Vue.createApp(app).mount("#app");
+
+  function sendRequest(url, method, data) {
+    const r = axios({
+      method: method,
+      url: url,
+      data: data,
+      xsrfCookieName: "csrftoken",
+      xsrfHeaderName: "x-CSRFToken",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    });
+    return r;
+  }
+</script>
+
+{% endblock script %}
