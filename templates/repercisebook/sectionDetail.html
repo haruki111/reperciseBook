@@ -15,14 +15,14 @@
         >
           <i class="icofont-arrow-left icofont-2x me-2"></i>
           <div
-            v-if="bookCover=='' || bookCover == 'null'"
+            v-if="!bookCover"
             id="book_small_appearance"
             class="card d-flex justify-content-center"
           ></div>
           <img
             v-else
             id="book_small_appearance"
-            :src="'/media/' + bookCover"
+            :src="bookCover"
             alt=""
             class="rounded"
           />

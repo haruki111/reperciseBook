@@ -4,14 +4,14 @@
   <div class="d-flex justify-content-center">
     <div>
       <div
-        v-if="book.cover=='' || book.cover == 'null'"
+        v-if="!book.cover"
         id="book_detail_appearance"
         class="card d-flex justify-content-center"
       ></div>
       <img
         v-else
         id="book_detail_appearance"
-        :src="'/media/' + book.cover"
+        :src="book.cover"
         alt=""
         class="rounded"
       />

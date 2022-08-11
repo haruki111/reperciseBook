@@ -1,3 +1,4 @@
+from sys import prefix
 from unittest import result
 from django.views.generic import TemplateView
 
@@ -6,13 +7,15 @@ from accounts.models import User
 from .forms import BookCreateForm, SectionCreateForm, ProblemCreateForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+from django.http import JsonResponse, HttpResponseServerError
 
-from django.http import JsonResponse, HttpResponseServerError, HttpResponseRedirect
-from django.shortcuts import render, redirect
-
-# from django.forms.models import model_to_dict
+import cloudinary
 
 import json
+
+
+def getCoverImg(coverStr):
+    return cloudinary.CloudinaryImage(coverStr).url
 
 
 def get_book_list(request):
@@ -27,7 +30,7 @@ def get_book_list(request):
                 "title": book.title,
                 "description": book.description,
                 "user": str(book.user),
-                "cover": str(book.cover),
+                "cover": getCoverImg(str(book.cover)),
                 "tags": [tag.name for tag in tags],
                 "finish_count": book.finish_count,
                 "postData": book.postData,
@@ -51,7 +54,7 @@ def get_detail_book(request, pk):
             "title": book.title,
             "description": book.description,
             "user": str(book.user),
-            "cover": str(book.cover),
+            "cover": getCoverImg(str(book.cover)),
             "tags": [tag.name for tag in tags],
             "finish_count": book.finish_count,
             "postData": book.postData,
@@ -76,7 +79,7 @@ def get_detail_section(request, pk):
         {
             'title': section.title,
             'book': section.book.pk,
-            'bookCover': str(section.book.cover),
+            'bookCover': getCoverImg(str(section.book.cover)),
             'orderNum': section.orderNum,
             "problemPk": [problem.pk for problem in problems],
             "problemQuestion": [problem.question for problem in problems],

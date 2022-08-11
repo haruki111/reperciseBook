@@ -46,7 +46,10 @@ INSTALLED_APPS = [
     'django.contrib.sites',  # 追加
     'allauth',  # 追加
     'allauth.account',  # 追加
-    'allauth.socialaccount'  # 追加
+    'allauth.socialaccount',  # 追加
+    # Cloudinary
+    'cloudinary_storage',
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -166,10 +169,11 @@ STATICFILES_DIRS = [
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-if DEBUG:
-    MEDIA_ROOT = BASE_DIR / 'media'
-else:
-    MEDIA_ROOT = f'/var/www/{BASE_DIR.name}/media'
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# if DEBUG:
+#     MEDIA_ROOT = BASE_DIR / 'media'
+# else:
+#     MEDIA_ROOT = f'/var/www/{BASE_DIR.name}/media'
 
 
 # Upload Settings
@@ -177,5 +181,12 @@ else:
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
 FILE_UPLOAD_MAX_MEMORY_SIZE = 15728640
 DATA_UPLOAD_MAX_MEMORY_SIZE = 15728640
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'hstuptmqo',
+    'API_KEY': env('CLOUDINARY_API_KEY'),
+    'API_SECRET': env('CLOUDINARY_API_SECRET'),
+    'EXCLUDE_DELETE_ORPHANED_MEDIA_PATHS': ('path/', 'second-path/')
+}
 
 django_heroku.settings(locals())

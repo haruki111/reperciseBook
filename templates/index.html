@@ -5,14 +5,14 @@
     <div v-for="(book, index) in books" :key="index" class="mt-4 mx-4">
       <div @click="detailBook(book.pk)" class="img_wrap">
         <div
-          v-if="book.cover=='' || book.cover == 'null'"
+          v-if="!book.cover"
           id="book_appearance"
           class="card d-flex justify-content-center"
         ></div>
         <img
           v-else
           id="book_appearance"
-          :src="'/media/' + book.cover"
+          :src="book.cover"
           alt=""
           class="rounded"
         />
